@@ -1,13 +1,21 @@
 ﻿using System;
+using System.Security.Claims;
+using System.Text;
+using GraphQL.Authorization;
 using GraphQL.Server;
+using GraphQL.Validation;
 using GraphQLExample.GraphQL;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 namespace GraphQLExample
 {
@@ -40,6 +48,40 @@ namespace GraphQLExample
 
             services.AddControllers();
 
+            services.TryAddSingleton<IAuthorizationEvaluator, AuthorizationEvaluator>();
+            services.AddTransient<IValidationRule, MaskAuthValidationRule>();
+
+            services.TryAddTransient(s =>
+            {
+                AuthorizationSettings authSettings = new();
+                authSettings.AddPolicy("AdminPolicy", p => p.RequireClaim(ClaimTypes.Role, "Admin"));
+                authSettings.AddPolicy("UserPolicy", p => p.RequireClaim(ClaimTypes.Role, "User"));
+                return authSettings;
+            });
+
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidateAudience = true,
+                        ValidateIssuer = true,
+                        ValidIssuer = this.Configuration["Jwt:Issuer"],
+                        ValidAudience = this.Configuration["Jwt:Issuer"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(this.Configuration["Jwt:Key"]))
+                    };
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            Console.WriteLine(context);
+                            return context.Response.WriteAsync("result");
+                        }
+                    };
+                });
+
             services.AddGraphQL(o =>
                 {
                     o.EnableMetrics = false;
@@ -47,7 +89,8 @@ namespace GraphQLExample
                 })
                 .AddSystemTextJson()
                 .AddGraphTypes(ServiceLifetime.Scoped)
-                .AddDataLoader();
+                .AddDataLoader()
+                .AddUserContextBuilder(context => new GraphQLUserContext {User = context.User});
 
             services.AddMvc(option => option.EnableEndpointRouting = false);
         }
@@ -60,7 +103,11 @@ namespace GraphQLExample
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseAuthentication();
+
             app.UseRouting();
+
+            app.UseAuthorization();
 
             app.UseGraphQL<CoreSchema>();
 

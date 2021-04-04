@@ -1,3 +1,4 @@
+using GraphQL.Authorization;
 using GraphQL.Types;
 using GraphQLExample.Models;
 
@@ -7,7 +8,7 @@ namespace GraphQLExample.GraphQLTypes
     {
         public AuthorType()
         {
-            this.Field(c => c.Id);
+            this.Field(c => c.Id).AuthorizeWith("UserPolicy");
             this.Field(c => c.Name);
         }
     }

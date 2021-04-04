@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using GraphQLExample.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using RestExample.Models;
 
-namespace GraphQLExample
+namespace RestExample
 {
     public class CoreDbContext : DbContext
     {
@@ -46,9 +46,8 @@ namespace GraphQLExample
                 {
                     Id = 1,
                     Username = "test",
-                    //pass: test
-                    Password = "Rxz4JssLe7a2dUdHf7RDadvekjprGHrSU271o7ldOLI=",
-                    Salt = "P7z+FJiy+5ipHc3OvOsjgg=="
+                    Password = "test",
+                    Salt = null
                 }
             });
 
