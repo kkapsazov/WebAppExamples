@@ -1,11 +1,11 @@
+using PhlatQL.Core.Types;
 using RestExample.Models;
-using RestExample.Responses.Base;
 
 namespace RestExample.Responses
 {
-    public class AuthorResponse : BaseResponse<Author>
+    public class AuthorType : ObjectPhlatType<Author>
     {
-        public AuthorResponse()
+        public AuthorType()
         {
             this.Field(c => c.Name);
         }

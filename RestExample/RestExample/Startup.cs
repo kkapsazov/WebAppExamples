@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +39,22 @@ namespace RestExample
                 .UseSqlite(StaticConfig.GetConnectionString("SQLite"))
                 .UseLoggerFactory(CustomLoggerFactory));
 
-            services.AddControllers();
+            services.AddControllers()
+                .ConfigureApiBehaviorOptions(o =>
+                {
+                    o.InvalidModelStateResponseFactory = context =>
+                    {
+                        ILogger<Startup> logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Startup>>();
+                        Exception ex = new(context.ModelState.Values.First().Errors.First().ErrorMessage);
+                        logger.Log(LogLevel.Error, ex, ex.Message);
+                        Console.WriteLine(ex);
+                        context.HttpContext.Response.ContentType = "text/plain";
+                        context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                        context.HttpContext.Response.WriteAsync("Error");
+                        return new EmptyResult();
+                    };
+                })
+                .AddNewtonsoftJson(o => o.AllowInputFormatterExceptionMessages = false);
 
             services.AddSwaggerGen(c =>
             {
@@ -67,6 +85,18 @@ namespace RestExample
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+            });
+
+            app.UseExceptionHandler(errorApp =>
+            {
+                errorApp.Run(async context =>
+                {
+                    Exception ex = context.Features.Get<IExceptionHandlerPathFeature>()?.Error;
+                    Console.WriteLine(ex);
+                    context.Response.ContentType = "text/plain";
+                    context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    await context.Response.WriteAsync("Es trat ein unvorhergesehenes Problem auf - bitte kontaktieren Sie Ihren Administrator!");
+                });
             });
         }
     }
