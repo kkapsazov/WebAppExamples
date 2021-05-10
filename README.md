@@ -8,4 +8,3 @@ Here are some examples with already configured projects for the most common .Net
   
 2. Rest
   - Usage of PhlatQL (https://github.com/kkapsazov/PhlatQL)
-  - Custom response mechanism for lightweight model to response mapping 
